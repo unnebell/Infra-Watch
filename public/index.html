@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f17" id="metaThemeColor" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Server Monitor" />
+  <title>Server Monitor — Dashboard Local</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="shortcut icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Barra fixa superior compacta para celular (aparece ao rolar) -->
+  <div class="mobile-sticky-bar" id="mobileStickyBar" aria-hidden="true">
+    <div class="mobile-sticky-left">
+      <span class="status-badge status-waiting status-compact" id="stickyStatusBadge">
+        <span class="status-dot"></span>
+        <span id="stickyStatusText">AGUARDANDO</span>
+      </span>
+      <span class="mobile-sticky-name" id="stickyServerTitle">Servidor</span>
+    </div>
+    <div class="mobile-sticky-right">
+      <span class="mobile-sticky-metrics">
+        <span>CPU <strong id="stickyCpu">—</strong></span>
+        <span class="sep">·</span>
+        <span>RAM <strong id="stickyRam">—</strong></span>
+      </span>
+      <button type="button" class="btn-sticky-refresh" id="btnStickyRefresh" title="Atualizar agora"
+        aria-label="Atualizar dados agora">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell">
+    <!-- Cabeçalho Principal -->
+    <header class="topbar" id="mainTopbar">
+      <div class="topbar-left">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="7" rx="2"></rect>
+            <rect x="2" y="14" width="20" height="7" rx="2"></rect>
+            <circle cx="6.5" cy="6.5" r="1"></circle>
+            <circle cx="6.5" cy="17.5" r="1"></circle>
+            <line x1="11" y1="6.5" x2="18" y2="6.5"></line>
+            <line x1="11" y1="17.5" x2="18" y2="17.5"></line>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title-row">
+            <h1 id="serverTitle">Servidor Local</h1>
+            <span class="status-badge status-waiting" id="statusBadge">
+              <span class="status-dot"></span>
+              <span id="statusBadgeText">AGUARDANDO</span>
+            </span>
+            <span class="mode-pill hidden" id="demoPill">MODO DEMO</span>
+          </div>
+          <div class="brand-meta" id="serverMeta">
+            <span class="meta-item"><span class="meta-label">Host:</span> <strong
+                id="metaHost">—</strong></span>
+            <span class="sep">·</span>
+            <span class="meta-item"><span class="meta-label">IP:</span> <strong
+                id="metaIp">—</strong></span>
+            <span class="sep">·</span>
+            <span class="meta-item"><span class="meta-label">Gateway:</span> <strong
+                id="metaGateway">—</strong></span>
+            <span class="sep">·</span>
+            <span class="meta-item"><span class="meta-label">Uptime:</span> <strong id="metaUptime">—</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="sync-indicator" title="Tempo desde o último heartbeat recebido">
+          <span class="sync-label">Última sincronização</span>
+          <strong id="lastSyncText">Aguardando...</strong>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-secondary" id="btnDemoToggle"
+            title="Visualizar dados simulados de exemplo">
+            Modo Demo
+          </button>
+          <button type="button" class="btn btn-danger-outline hidden" id="btnSimulateOffline"
+            title="Alternar simulação de servidor offline no modo demo">
+            Simular Offline
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnSetupGuide"
+            title="Ver instruções de conexão do servidor">
+            Como Conectar
+          </button>
+          <button type="button" class="btn btn-icon" id="btnManualRefresh" title="Atualizar dados agora"
+            aria-label="Atualizar dados">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+          <button type="button" class="btn btn-icon" id="btnThemeToggle" title="Alternar tema claro/escuro"
+            aria-label="Alternar tema">
+            <svg id="iconSun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Banner de Alerta: SERVIDOR OFFLINE -->
+    <section class="alert-banner alert-offline hidden" id="offlineBanner" role="alert">
+      <div class="alert-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <div class="alert-body">
+        <div class="alert-title">
+          SERVIDOR OFFLINE — <span id="offlineServerName">Servidor</span> não está respondendo
+        </div>
+        <p class="alert-desc" id="offlineDesc">
+          O servidor parou de enviar sinais de telemetria. Verifique se a máquina está ligada, conectada à rede local
+          e se o agente de monitoramento está em execução. Os valores abaixo exibem a última leitura conhecida.
+        </p>
+      </div>
+      <div class="alert-timer">
+        <span>Sem sinal há</span>
+        <strong id="offlineElapsed">—</strong>
+      </div>
+    </section>
+
+    <!-- Banner de Alerta: BACKUP ATRASADO (> 24h sem registro) -->
+    <section class="alert-banner alert-backup-overdue hidden" id="backupOverdueBanner" role="alert">
+      <div class="alert-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <div class="alert-body">
+        <div class="alert-title" id="backupOverdueTitle">
+          ALERTA DE BACKUP — Mais de 24h sem registro
+        </div>
+        <p class="alert-desc" id="backupOverdueDesc">
+          Nenhum novo registro de backup foi recebido em <code>POST /api/backup</code> nas últimas 24 horas. Verifique o agendamento e a sincronização do FreeFileSync / OneDrive.
+        </p>
+      </div>
+      <div class="alert-timer alert-timer-warn" id="backupOverdueTimerBox">
+        <span>Sem backup há</span>
+        <strong id="backupOverdueElapsed">—</strong>
+      </div>
+    </section>
+
+    <!-- Banner Inicial: Aguardando Primeiro Heartbeat -->
+    <section class="alert-banner alert-waiting hidden" id="waitingBanner">
+      <div class="alert-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <div class="alert-body">
+        <div class="alert-title">Aguardando primeira sincronização do servidor</div>
+        <p class="alert-desc">
+          A dashboard está online e pronta para receber dados em <code>/api/metrics</code>. No servidor,
+          abra <code>Gerenciador.bat</code> e escolha a opção
+          <strong>[1] Iniciar dashboard</strong>, ou ative o Modo Demo para visualizar a interface.
+        </p>
+      </div>
+      <div class="alert-actions">
+        <button type="button" class="btn btn-primary" id="btnWaitingDemo">Ativar Modo Demo</button>
+      </div>
+    </section>
+
+    <!-- Conteúdo Principal da Telemetria -->
+    <main class="dashboard-content" id="dashboardContent">
+      <!-- Linha 1: 4 Métricas Principais (CPU, RAM, Armazenamento, Rede) -->
+      <section class="kpi-grid" id="sec-recursos">
+        <!-- Card CPU -->
+        <article class="card kpi-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Processador</span>
+              <h2 class="card-title">Uso de CPU</h2>
+            </div>
+            <span class="stale-tag">Última leitura</span>
+          </div>
+          <div class="gauge-row">
+            <div class="radial-gauge" id="cpuGauge">
+              <svg viewBox="0 0 100 100">
+                <circle class="gauge-track" cx="50" cy="50" r="40"></circle>
+                <circle class="gauge-fill gauge-cpu" id="cpuGaugeArc" cx="50" cy="50" r="40"></circle>
+              </svg>
+              <div class="gauge-value">
+                <strong id="cpuPercent">—</strong>
+                <span>%</span>
+              </div>
+            </div>
+            <div class="kpi-details">
+              <div class="kpi-main-sub" id="cpuModel">Aguardando dados...</div>
+              <div class="kpi-stat-list">
+                <div><span>Núcleos / Threads</span><strong id="cpuCores">—</strong></div>
+                <div><span>Frequência Máx.</span><strong id="cpuClock">—</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="sparkline-box">
+            <div class="sparkline-header">
+              <span>Histórico recente (CPU %)</span>
+              <span id="cpuAvgText">—</span>
+            </div>
+            <svg class="sparkline" id="cpuSparkline" viewBox="0 0 260 54" preserveAspectRatio="none"></svg>
+          </div>
+        </article>
+
+        <!-- Card RAM -->
+        <article class="card kpi-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Memória</span>
+              <h2 class="card-title">Memória RAM</h2>
+            </div>
+            <span class="stale-tag">Última leitura</span>
+          </div>
+          <div class="gauge-row">
+            <div class="radial-gauge" id="ramGauge">
+              <svg viewBox="0 0 100 100">
+                <circle class="gauge-track" cx="50" cy="50" r="40"></circle>
+                <circle class="gauge-fill gauge-ram" id="ramGaugeArc" cx="50" cy="50" r="40"></circle>
+              </svg>
+              <div class="gauge-value">
+                <strong id="ramPercent">—</strong>
+                <span>%</span>
+              </div>
+            </div>
+            <div class="kpi-details">
+              <div class="kpi-main-sub" id="ramSummary">— / —</div>
+              <div class="kpi-stat-list">
+                <div><span>Em uso</span><strong id="ramUsed">—</strong></div>
+                <div><span>Disponível</span><strong id="ramFree">—</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="sparkline-box">
+            <div class="sparkline-header">
+              <span>Histórico recente (RAM %)</span>
+              <span id="ramPeakText">—</span>
+            </div>
+            <svg class="sparkline" id="ramSparkline" viewBox="0 0 260 54" preserveAspectRatio="none"></svg>
+          </div>
+        </article>
+
+        <!-- Card Armazenamento -->
+        <article class="card kpi-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Armazenamento</span>
+              <h2 class="card-title">Discos & Volumes</h2>
+            </div>
+            <span class="pill-subtle" id="diskTotalBadge">—</span>
+          </div>
+          <div class="disks-list" id="disksList">
+            <div class="empty-state">Nenhum volume reportado ainda.</div>
+          </div>
+        </article>
+
+        <!-- Card Rede -->
+        <article class="card kpi-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Tráfego de Rede</span>
+              <h2 class="card-title">Rede Local</h2>
+            </div>
+            <span class="pill-subtle" id="netLinkSpeed">—</span>
+          </div>
+          <div class="net-rates">
+            <div class="net-rate-item net-down">
+              <span class="net-dir">↓ Download (Entrada)</span>
+              <strong id="netDownSpeed">—</strong>
+              <small id="netDownMbps">—</small>
+            </div>
+            <div class="net-rate-item net-up">
+              <span class="net-dir">↑ Upload (Saída)</span>
+              <strong id="netUpSpeed">—</strong>
+              <small id="netUpMbps">—</small>
+            </div>
+          </div>
+          <div class="sparkline-box">
+            <div class="sparkline-header">
+              <span>Tráfego em tempo real</span>
+              <span class="legend-inline">
+                <i class="dot-down"></i>RX
+                <i class="dot-up"></i>TX
+              </span>
+            </div>
+            <svg class="sparkline" id="netSparkline" viewBox="0 0 260 54" preserveAspectRatio="none"></svg>
+          </div>
+          <div class="net-totals">
+            <span>Acumulado: <strong id="netTotalRx">—</strong> RX · <strong id="netTotalTx">—</strong> TX</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Seção Dedicada: Último Backup (API POST /api/backup + FreeFileSync → OneDrive) -->
+      <section class="backup-section" id="sec-backup">
+        <article class="card backup-card" id="backupCard">
+          <div class="card-header panel-header-wrap">
+            <div>
+              <span class="card-kicker" id="backupKicker">Proteção de Dados · Endpoint POST /api/backup</span>
+              <h2 class="card-title">Último Backup <span class="count-chip" id="backupHistoryCountChip">0 registros</span></h2>
+            </div>
+            <div class="backup-header-badges">
+              <span class="badge-sm badge-neutral hidden" id="backupOneDriveBadge">OneDrive: —</span>
+              <span class="badge-sm badge-ok hidden" id="backupRtsBadge">RealTimeSync: Ativo</span>
+              <span class="status-badge status-waiting" id="backupStatusBadge">
+                <span class="status-dot"></span>
+                <span id="backupStatusText">SEM REGISTRO</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="backup-overview-grid">
+            <div class="backup-hero-box">
+              <span class="backup-field-label">Último Backup (Hora do Servidor)</span>
+              <strong class="backup-datetime" id="backupLastDate">—</strong>
+              <span class="backup-age" id="backupAgeText">Aguardando primeiro registro...</span>
+            </div>
+
+            <div class="backup-info-box">
+              <span class="backup-field-label">Tarefa & Status</span>
+              <div class="backup-result-row">
+                <strong id="backupJobName">—</strong>
+                <span class="badge-sm badge-neutral" id="backupResultBadge">—</span>
+              </div>
+              <span class="backup-detail-text" id="backupDetailText">Código: —</span>
+            </div>
+
+            <div class="backup-info-box">
+              <span class="backup-field-label">Agendamento & Máquina</span>
+              <strong class="backup-source-name" id="backupSourceText">—</strong>
+              <span class="backup-path-text mono" id="backupDestText">Máquina: —</span>
+              <span class="backup-next-text hidden" id="backupNextText"></span>
+            </div>
+
+            <div class="backup-info-box">
+              <span class="backup-field-label">Monitoramento 24h</span>
+              <div class="backup-policy-row">
+                <strong id="backupPolicySummary">Alerta &gt; 24h · Crítico &gt; 48h</strong>
+              </div>
+              <div class="progress-bar backup-freshness-bar">
+                <div class="progress-fill" id="backupFreshnessFill" style="width: 0%"></div>
+              </div>
+              <span class="backup-detail-text" id="backupFreshnessText">Aguardando primeiro registro</span>
+            </div>
+          </div>
+
+          <div class="backup-hint hidden" id="backupHint">
+            Nenhum backup foi registrado ainda via <code>POST /api/backup</code> (com cabeçalho <code>Authorization: Bearer &lt;token&gt;</code>). Assim que uma execução for enviada, o último status e o histórico aparecerão aqui automaticamente.
+          </div>
+
+          <div class="backup-history-wrap" id="backupHistoryWrap">
+            <div class="sub-section-title">Histórico de Execuções de Backup</div>
+            <div class="table-wrap compact-table">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data / Hora</th>
+                    <th>Tarefa</th>
+                    <th>Agendamento</th>
+                    <th>Máquina</th>
+                    <th class="num-col">Código</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="backupHistoryTableBody">
+                  <tr class="empty-row"><td colspan="6" class="empty-cell">Nenhum registro de backup recebido ainda.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Linha 2: Pastas Compartilhadas + Usuários e Sessões Ativas -->
+      <section class="ops-grid">
+        <!-- Pastas Compartilhadas -->
+        <article class="card panel-card" id="sec-pastas">
+          <div class="card-header panel-header-wrap">
+            <div>
+              <span class="card-kicker">Compartilhamento SMB</span>
+              <h2 class="card-title">Pastas Compartilhadas <span class="count-chip" id="sharesCountChip">0</span></h2>
+            </div>
+            <label class="toggle-inline">
+              <input type="checkbox" id="toggleSystemShares" />
+              <span>Exibir ocultas/sistema (<code>$</code>)</span>
+            </label>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Pasta / Rede</th>
+                  <th>Caminho Local</th>
+                  <th>Descrição</th>
+                  <th class="num-col">Acessos</th>
+                  <th class="act-col">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="sharesTableBody">
+                <tr class="empty-row">
+                  <td colspan="5" class="empty-cell">Nenhuma pasta compartilhada encontrada.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Usuários & Sessões Ativas -->
+        <article class="card panel-card" id="sec-usuarios">
+          <div class="card-header panel-header-wrap">
+            <div>
+              <span class="card-kicker">Controle de Acesso</span>
+              <h2 class="card-title">Usuários & Sessões</h2>
+            </div>
+            <div class="tabs-inline" role="tablist">
+              <button type="button" class="tab-btn active" data-users-tab="active">Ativos Agora</button>
+              <button type="button" class="tab-btn" data-users-tab="all">Todas as Contas</button>
+            </div>
+          </div>
+
+          <div class="users-kpi-strip">
+            <div class="mini-stat">
+              <span>Total de Contas</span>
+              <strong id="usersTotalCount">—</strong>
+            </div>
+            <div class="mini-stat">
+              <span>Habilitadas</span>
+              <strong id="usersEnabledCount">—</strong>
+            </div>
+            <div class="mini-stat accent-green">
+              <span>Ativos (Windows)</span>
+              <strong id="usersActiveCount">—</strong>
+            </div>
+            <div class="mini-stat accent-cyan">
+              <span>Conectados (Rede)</span>
+              <strong id="usersSmbCount">—</strong>
+            </div>
+          </div>
+
+          <!-- Aba Ativos Agora -->
+          <div class="users-tab-panel" id="tabUsersActive">
+            <div class="sub-section-title">Sessões Interativas / RDP no Servidor</div>
+            <div class="table-wrap compact-table">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>Origem</th>
+                    <th>Estado</th>
+                    <th>Logon</th>
+                  </tr>
+                </thead>
+                <tbody id="activeSessionsBody">
+                  <tr class="empty-row">
+                    <td colspan="4" class="empty-cell">Nenhuma sessão ativa no momento.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="sub-section-title">Conexões Ativas em Pastas Compartilhadas (Rede SMB)</div>
+            <div class="table-wrap compact-table">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>IP / Estação</th>
+                    <th class="num-col">Arq. Abertos</th>
+                    <th class="num-col">Tempo</th>
+                  </tr>
+                </thead>
+                <tbody id="smbSessionsBody">
+                  <tr class="empty-row">
+                    <td colspan="4" class="empty-cell">Nenhuma sessão SMB ativa (ou agente sem permissão de Admin).</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Aba Todas as Contas -->
+          <div class="users-tab-panel hidden" id="tabUsersAll">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>Nome Completo</th>
+                    <th>Status</th>
+                    <th>Último Logon</th>
+                  </tr>
+                </thead>
+                <tbody id="allAccountsBody">
+                  <tr class="empty-row">
+                    <td colspan="4" class="empty-cell">Nenhuma conta carregada.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Linha 3: Módulos Extras Extensíveis + Processos + Detalhes do Sistema -->
+      <section class="bottom-grid" id="sec-sistema">
+        <!-- Módulos Extras & Serviços -->
+        <article class="card panel-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Módulos Extensíveis</span>
+              <h2 class="card-title">Serviços & Verificações</h2>
+            </div>
+            <span class="pill-subtle">Expansível</span>
+          </div>
+          <div class="extras-grid" id="extrasGrid">
+            <div class="empty-state">Aguardando verificações do servidor...</div>
+          </div>
+        </article>
+
+        <!-- Top Processos por Memória -->
+        <article class="card panel-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Consumo por Processo</span>
+              <h2 class="card-title">Principais Processos (RAM)</h2>
+            </div>
+            <span class="pill-subtle">Top 6</span>
+          </div>
+          <div class="processes-list" id="processesList">
+            <div class="empty-state">Sem processos coletados ainda.</div>
+          </div>
+        </article>
+
+        <!-- Informações do Sistema & Interfaces -->
+        <article class="card panel-card">
+          <div class="card-header">
+            <div>
+              <span class="card-kicker">Hardware & Sistema</span>
+              <h2 class="card-title">Detalhes do Servidor</h2>
+            </div>
+            <span class="pill-subtle" id="storageBackendBadge">Local</span>
+          </div>
+          <dl class="sys-info-list">
+            <div>
+              <dt>Sistema Operacional</dt>
+              <dd id="sysOs">—</dd>
+            </div>
+            <div>
+              <dt>Versão / Arquitetura</dt>
+              <dd id="sysVersion">—</dd>
+            </div>
+            <div>
+              <dt>Última Inicialização</dt>
+              <dd id="sysLastBoot">—</dd>
+            </div>
+            <div>
+              <dt>Tempo Ligado (Uptime)</dt>
+              <dd id="sysUptime">—</dd>
+            </div>
+          </dl>
+          <div class="sub-section-title">Adaptadores de Rede</div>
+          <div class="adapters-list" id="adaptersList">
+            <div class="empty-state">Nenhum adaptador listado.</div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Guia de Conexão -->
+  <div class="modal-backdrop hidden" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="setupModalTitle">Como conectar o servidor</h3>
+        <button type="button" class="btn btn-icon" id="btnCloseModal" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-step">
+          <span class="step-num">1</span>
+          <div>
+            <strong>Instalar e gerenciar tudo no servidor (Recomendado)</strong>
+            <p>Copie a pasta completa do projeto para um diretório fixo (ex.: <code>C:\ServerMonitor</code>) no servidor Windows, dê dois cliques em <code>Gerenciador.bat</code> (aceite o aviso de Administrador) e escolha <strong>[1] Iniciar dashboard</strong> para instalar e iniciar os serviços automaticamente.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">2</span>
+          <div>
+            <strong>Acessar de qualquer PC ou celular da rede</strong>
+            <p>Após instalar no servidor, nenhum outro dispositivo precisa rodar nada. Basta abrir no navegador:<br />
+              • Pelo nome na rede: <code>http://&lt;nome-do-servidor&gt;</code><br />
+              • Pelo IP local ou VPN: <code>http://&lt;ip-do-servidor&gt;</code></p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">3</span>
+          <div>
+            <strong>Nome personalizado (opcional)</strong>
+            <p>Se quiser usar um apelido amigável (ex.: <code>http://monitor.local</code>), configure um registro de DNS local no roteador ou adicione no arquivo <code>C:\Windows\System32\drivers\etc\hosts</code>: <code>&lt;ip-do-servidor&gt; monitor.local</code>.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">4</span>
+          <div>
+            <strong>Usar como aplicativo no celular (Android / iPhone)</strong>
+            <p>Abra o endereço da dashboard no Chrome (Android) ou Safari (iPhone) na mesma rede e toque em <strong>Adicionar à tela inicial</strong> para usar em tela cheia como um app.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegação Inferior Rápida (somente celular) -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Navegação rápida das seções">
+    <a href="#sec-recursos" class="mobile-nav-item active" data-nav-target="sec-recursos">
+      <span class="mobile-nav-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+          <rect x="9" y="9" width="6" height="6"></rect>
+          <line x1="9" y1="1" x2="9" y2="4"></line>
+          <line x1="15" y1="1" x2="15" y2="4"></line>
+          <line x1="9" y1="20" x2="9" y2="23"></line>
+          <line x1="15" y1="20" x2="15" y2="23"></line>
+          <line x1="20" y1="9" x2="23" y2="9"></line>
+          <line x1="20" y1="14" x2="23" y2="14"></line>
+          <line x1="1" y1="9" x2="4" y2="9"></line>
+          <line x1="1" y1="14" x2="4" y2="14"></line>
+        </svg>
+      </span>
+      <span class="mobile-nav-label">Recursos</span>
+    </a>
+    <a href="#sec-backup" class="mobile-nav-item" data-nav-target="sec-backup">
+      <span class="mobile-nav-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+          <polyline points="12 12 12 16 14 14"></polyline>
+        </svg>
+        <span class="mobile-nav-dot hidden" id="navBackupDot"></span>
+      </span>
+      <span class="mobile-nav-label">Backup</span>
+    </a>
+    <a href="#sec-pastas" class="mobile-nav-item" data-nav-target="sec-pastas">
+      <span class="mobile-nav-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="mobile-nav-badge hidden" id="navSharesBadge">0</span>
+      </span>
+      <span class="mobile-nav-label">Pastas</span>
+    </a>
+    <a href="#sec-usuarios" class="mobile-nav-item" data-nav-target="sec-usuarios">
+      <span class="mobile-nav-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span class="mobile-nav-badge hidden" id="navUsersBadge">0</span>
+      </span>
+      <span class="mobile-nav-label">Usuários</span>
+    </a>
+    <a href="#sec-sistema" class="mobile-nav-item" data-nav-target="sec-sistema">
+      <span class="mobile-nav-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="7" rx="2"></rect>
+          <rect x="2" y="14" width="20" height="7" rx="2"></rect>
+          <circle cx="6.5" cy="6.5" r="1"></circle>
+          <circle cx="6.5" cy="17.5" r="1"></circle>
+        </svg>
+      </span>
+      <span class="mobile-nav-label">Sistema</span>
+    </a>
+  </nav>
+
+  <!-- Toast de Feedback -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "Server Monitor — Dashboard Local",
+  "short_name": "Server Monitor",
+  "description": "Monitoramento em tempo real de servidores Windows (CPU, RAM, Discos, Rede, Backups, Pastas SMB, Usuários e Serviços).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
