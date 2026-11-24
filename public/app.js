@@ -1,9 +1,20 @@
 (() => {
   const POLL_INTERVAL_MS = 3000;
   const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 40; // r = 40
+  const urlParams = new URLSearchParams(window.location.search);
+  const isStaticHost =
+    window.location.protocol === "file:" ||
+    /(?:github\.io|vercel\.app|netlify\.app|pages\.dev)$/i.test(window.location.hostname);
+  const isStandaloneDemo =
+    window.INFRAWATCH_DEMO_ONLY === true ||
+    document.documentElement.dataset.demoOnly === "true" ||
+    urlParams.get("demo") === "1" ||
+    urlParams.get("demo") === "true" ||
+    isStaticHost;
 
   const state = {
-    demoMode: false,
+    standaloneDemo: isStandaloneDemo,
+    demoMode: isStandaloneDemo,
     demoOffline: false,
     demoOfflineSince: null,
     demoHistory: [],
@@ -1194,28 +1205,34 @@
     });
   }
 
-  function setDemoMode(enabled) {
-    state.demoMode = enabled;
+  function setDemoMode(enabled, options = {}) {
+    const nextEnabled = state.standaloneDemo ? true : Boolean(enabled);
+    state.demoMode = nextEnabled;
     state.demoOffline = false;
-    el.btnDemoToggle.classList.toggle("active", enabled);
-    el.btnDemoToggle.textContent = enabled ? "Sair do Demo" : "Modo Demo";
-    el.demoPill.classList.toggle("hidden", !enabled);
-    el.btnSimulateOffline.classList.toggle("hidden", !enabled);
+    el.btnDemoToggle.classList.toggle("active", nextEnabled);
+    el.btnDemoToggle.textContent = nextEnabled ? "Sair do Demo" : "Modo Demo";
+    el.btnDemoToggle.classList.toggle("hidden", state.standaloneDemo);
+    el.demoPill.classList.toggle("hidden", !nextEnabled);
+    el.btnSimulateOffline.classList.toggle("hidden", !nextEnabled);
     el.btnSimulateOffline.classList.remove("active");
     el.btnSimulateOffline.textContent = "Simular Offline";
 
-    if (enabled) {
+    if (nextEnabled) {
       if (state.demoHistory.length === 0) {
-        // Preenche 12 pontos iniciais para os gráficos já aparecerem bonitos
+        // Preenche 12 pontos iniciais para os gráficos já aparecerem completos
         for (let i = 0; i < 12; i++) generateDemoTick();
       } else {
         generateDemoTick();
       }
-      showToast("Modo Demo ativado (dados simulados).");
+      if (!options.silent) {
+        showToast("Modo Demo ativado (dados simulados).");
+      }
     } else {
       fetchLiveMetrics();
       fetchBackupRecords();
-      showToast("Voltando para dados reais do servidor.");
+      if (!options.silent) {
+        showToast("Voltando para dados reais do servidor.");
+      }
     }
   }
 
@@ -1340,8 +1357,11 @@
     localStorage.setItem("infrawatch-theme", next);
   });
 
+  const queryTheme = urlParams.get("theme");
   const savedTheme = localStorage.getItem("infrawatch-theme");
-  if (savedTheme === "light" || savedTheme === "dark") {
+  if (queryTheme === "light" || queryTheme === "dark") {
+    applyTheme(queryTheme);
+  } else if (savedTheme === "light" || savedTheme === "dark") {
     applyTheme(savedTheme);
   }
 
@@ -1426,8 +1446,12 @@
 
   // Inicialização
   updateMobileNavigation();
-  fetchLiveMetrics();
-  fetchBackupRecords();
+  if (state.standaloneDemo) {
+    setDemoMode(true, { silent: true });
+  } else {
+    fetchLiveMetrics();
+    fetchBackupRecords();
+  }
   setInterval(() => {
     if (state.demoMode) generateDemoTick();
     else {
