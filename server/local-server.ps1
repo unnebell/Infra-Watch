@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$Port = 3000,
     [string]$ApiKey = "server-monitor-local-key",
     [string]$BackupToken = "",
@@ -45,7 +45,7 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-public class LocalMonitorServer
+public class InfraWatchLocalServer
 {
     private readonly int _port;
     private readonly string _publicDir;
@@ -68,7 +68,7 @@ public class LocalMonitorServer
     private readonly List<Dictionary<string, object>> _backupHistory = new List<Dictionary<string, object>>();
     private const int MaxBackupHistory = 200;
 
-    public LocalMonitorServer(int port, string publicDir, string apiKey, int offlineThresholdSeconds, string backupToken, string backupDataFile)
+    public InfraWatchLocalServer(int port, string publicDir, string apiKey, int offlineThresholdSeconds, string backupToken, string backupDataFile)
     {
         _port = port;
         _publicDir = Path.GetFullPath(publicDir);
@@ -803,14 +803,14 @@ try {
         Select-Object -ExpandProperty IPAddress
 } catch { }
 
-$server = New-Object LocalMonitorServer($Port, $PublicDir, $ApiKey, $OfflineThresholdSeconds, $BackupToken, $BackupDataFile)
+$server = New-Object InfraWatchLocalServer($Port, $PublicDir, $ApiKey, $OfflineThresholdSeconds, $BackupToken, $BackupDataFile)
 $server.Start()
 
 $primaryIp = if ($localIps.Count -gt 0) { $localIps[0] } else { "127.0.0.1" }
 
 Write-Host ""
 Write-Host "==============================================================" -ForegroundColor Cyan
-Write-Host "  Server Monitor - Servidor Local da Dashboard" -ForegroundColor White
+Write-Host "  InfraWatch - Servidor Local da Dashboard" -ForegroundColor White
 Write-Host "==============================================================" -ForegroundColor Cyan
 Write-Host "  Dashboard local : http://localhost:$Port" -ForegroundColor Green
 foreach ($ip in $localIps) {

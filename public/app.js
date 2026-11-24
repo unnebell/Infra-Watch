@@ -1337,10 +1337,10 @@
     const html = document.documentElement;
     const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
     applyTheme(next);
-    localStorage.setItem("server-monitor-theme", next);
+    localStorage.setItem("infrawatch-theme", next);
   });
 
-  const savedTheme = localStorage.getItem("server-monitor-theme");
+  const savedTheme = localStorage.getItem("infrawatch-theme");
   if (savedTheme === "light" || savedTheme === "dark") {
     applyTheme(savedTheme);
   }

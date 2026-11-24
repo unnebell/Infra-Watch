@@ -21,13 +21,13 @@ $intervalSeconds = if ($config.intervalSeconds -and $config.intervalSeconds -ge 
 
 # Coletor nativo de CPU via kernel32.dll (GetSystemTimes) - independe de WMI e idioma do Windows
 try {
-    if (-not ([System.Management.Automation.PSTypeName]'MonitorCpuNative').Type) {
+    if (-not ([System.Management.Automation.PSTypeName]'InfraWatchCpuNative').Type) {
         Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-public static class MonitorCpuNative
+public static class InfraWatchCpuNative
 {
     [StructLayout(LayoutKind.Sequential)]
     private struct FILETIME { public uint dwLowDateTime; public uint dwHighDateTime; }
@@ -76,7 +76,7 @@ public static class MonitorCpuNative
     }
 }
 
-public static class MonitorSessionNative
+public static class InfraWatchSessionNative
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct WTS_SESSION_INFO
@@ -200,8 +200,8 @@ $script:BackupScanCache = $null
 function Get-CpuUsagePercent {
     # 1. Método nativo via kernel32.dll (GetSystemTimes) - mais rápido e confiável no Windows 10
     try {
-        if (([System.Management.Automation.PSTypeName]'MonitorCpuNative').Type) {
-            $nativeCpu = [MonitorCpuNative]::GetCpuPercent()
+        if (([System.Management.Automation.PSTypeName]'InfraWatchCpuNative').Type) {
+            $nativeCpu = [InfraWatchCpuNative]::GetCpuPercent()
             if ($nativeCpu -ge 0) {
                 return [Math]::Min([double]100, [Math]::Max([double]0, [Math]::Round([double]$nativeCpu, 1)))
             }
@@ -453,8 +453,8 @@ function Get-UserMetrics {
 
     # 1. Sessões interativas / RDP via API nativa Win32 (wtsapi32.dll - funciona em qualquer idioma/Windows 10)
     try {
-        if (([System.Management.Automation.PSTypeName]'MonitorSessionNative').Type) {
-            $wtsSessions = [MonitorSessionNative]::GetSessions()
+        if (([System.Management.Automation.PSTypeName]'InfraWatchSessionNative').Type) {
+            $wtsSessions = [InfraWatchSessionNative]::GetSessions()
             foreach ($s in $wtsSessions) {
                 $uName = [string]$s["username"]
                 if (-not $uName) { continue }
@@ -990,7 +990,7 @@ function Get-BackupMetrics {
 
         try {
             $tasks = Get-ScheduledTask -ErrorAction Stop | Where-Object {
-                $_.TaskPath -notlike "\Microsoft\Windows\*" -and $_.TaskName -notlike "ServerMonitor*"
+                $_.TaskPath -notlike "\Microsoft\Windows\*" -and $_.TaskName -notlike "InfraWatch*"
             }
             foreach ($t in $tasks) {
                 $actText = ""
@@ -1213,7 +1213,7 @@ function Collect-Payload {
 if (-not $DryRun) {
     Write-Host ""
     Write-Host "==============================================================" -ForegroundColor Cyan
-    Write-Host "  Server Monitor - Agente de Coleta Windows" -ForegroundColor White
+    Write-Host "  InfraWatch - Agente de Coleta Windows" -ForegroundColor White
     Write-Host "==============================================================" -ForegroundColor Cyan
     Write-Host "  Host coletado : $hostname" -ForegroundColor Green
     Write-Host "  Destino API   : $endpointUrl" -ForegroundColor Yellow

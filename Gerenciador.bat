@@ -6,40 +6,40 @@ if "%ORIG_DIR:~-1%"=="\" set "ORIG_DIR=%ORIG_DIR:~0,-1%"
 
 net session >nul 2>&1
 if errorlevel 1 (
-    set "RUN_COPY=%PUBLIC%\ServerMonitor-Gerenciador.bat"
+    set "RUN_COPY=%PUBLIC%\InfraWatch-Gerenciador.bat"
     copy /Y "%~f0" "!RUN_COPY!" >nul 2>&1
     if not exist "!RUN_COPY!" (
         echo ERRO: Nao foi possivel preparar o gerenciador em !RUN_COPY!.
         pause
         exit /b 1
     )
-    > "%PUBLIC%\ServerMonitor-origdir.txt" echo !ORIG_DIR!
-    powershell -NoProfile -Command "Start-Process -FilePath ($env:PUBLIC + '\ServerMonitor-Gerenciador.bat') -Verb RunAs"
+    > "%PUBLIC%\InfraWatch-origdir.txt" echo !ORIG_DIR!
+    powershell -NoProfile -Command "Start-Process -FilePath ($env:PUBLIC + '\InfraWatch-Gerenciador.bat') -Verb RunAs"
     exit /b
 )
 
-if exist "%PUBLIC%\ServerMonitor-origdir.txt" (
-    set /p ORIG_DIR=<"%PUBLIC%\ServerMonitor-origdir.txt"
-    del /q "%PUBLIC%\ServerMonitor-origdir.txt" >nul 2>&1
+if exist "%PUBLIC%\InfraWatch-origdir.txt" (
+    set /p ORIG_DIR=<"%PUBLIC%\InfraWatch-origdir.txt"
+    del /q "%PUBLIC%\InfraWatch-origdir.txt" >nul 2>&1
 )
 
 set "WORK_TMP=%SystemRoot%\Temp"
 if not exist "%WORK_TMP%" set "WORK_TMP=%PUBLIC%"
 
 chcp 65001 >nul
-title Server Monitor - Painel de Controle
+title InfraWatch - Painel de Controle
 mode con: cols=74 lines=34 >nul 2>&1
 color 0F
 
-set "TASK_DASH=ServerMonitorDashboard"
-set "TASK_AGENT=ServerMonitorAgente"
+set "TASK_DASH=InfraWatchDashboard"
+set "TASK_AGENT=InfraWatchAgente"
 
 :MENU
 call :CHECK_STATUS
 cls
 echo.
 echo   ======================================================================
-echo                    SERVER MONITOR - PAINEL DE CONTROLE
+echo                     INFRAWATCH - PAINEL DE CONTROLE
 echo                       Servidor: %COMPUTERNAME% (Local)
 echo   ======================================================================
 echo.

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$PreferredPort = 80
 )
 
@@ -24,12 +24,12 @@ if (-not (Test-Path $ServerScript) -or -not (Test-Path $AgentScript) -or -not (T
 
 Write-Host ""
 Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "  Server Monitor - Instalador Completo (100% Local)" -ForegroundColor White
+Write-Host "  InfraWatch - Instalador Completo (100% Local)" -ForegroundColor White
 Write-Host "==================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Para tarefas antigas se já existirem (para liberar a porta antes de testar)
-foreach ($tName in @("ServerMonitorDashboard", "ServerMonitorAgente")) {
+foreach ($tName in @("InfraWatchDashboard", "InfraWatchAgente")) {
     try {
         $existing = Get-ScheduledTask -TaskName $tName -ErrorAction SilentlyContinue
         if ($existing) {
@@ -59,8 +59,8 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 Write-Host "[OK] agent\config.json atualizado para: $($cfg.endpointUrl)" -ForegroundColor Green
 
 # 4. Cria regra de Firewall para redes privadas locais e VPN
-$RuleName = "Server Monitor - Dashboard Local (Porta $chosenPort)"
-Remove-NetFirewallRule -DisplayName "Server Monitor - Dashboard Local*" -ErrorAction SilentlyContinue
+$RuleName = "InfraWatch - Dashboard Local (Porta $chosenPort)"
+Remove-NetFirewallRule -DisplayName "InfraWatch - Dashboard Local*" -ErrorAction SilentlyContinue
 New-NetFirewallRule `
     -DisplayName $RuleName `
     -Direction Inbound `
@@ -83,17 +83,17 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Days 0)
 
 $dashAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ServerScript`" -Port $chosenPort"
-Register-ScheduledTask -TaskName "ServerMonitorDashboard" -Action $dashAction -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+Register-ScheduledTask -TaskName "InfraWatchDashboard" -Action $dashAction -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 
 $agentAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$AgentScript`""
-Register-ScheduledTask -TaskName "ServerMonitorAgente" -Action $agentAction -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+Register-ScheduledTask -TaskName "InfraWatchAgente" -Action $agentAction -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 
-Write-Host "[OK] Serviços automáticos 'ServerMonitorDashboard' e 'ServerMonitorAgente' registrados." -ForegroundColor Green
+Write-Host "[OK] Serviços automáticos 'InfraWatchDashboard' e 'InfraWatchAgente' registrados." -ForegroundColor Green
 
 # 6. Inicia os dois serviços agora mesmo
-Start-ScheduledTask -TaskName "ServerMonitorDashboard"
+Start-ScheduledTask -TaskName "InfraWatchDashboard"
 Start-Sleep -Seconds 3
-Start-ScheduledTask -TaskName "ServerMonitorAgente"
+Start-ScheduledTask -TaskName "InfraWatchAgente"
 
 $hostLower = ($env:COMPUTERNAME).ToLowerInvariant()
 $portSuffix = if ($chosenPort -eq 80) { "" } else { ":$chosenPort" }
