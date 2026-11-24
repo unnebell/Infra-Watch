@@ -16,10 +16,29 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $ServerScript = Join-Path $ProjectRoot "server\local-server.ps1"
 $AgentScript = Join-Path $ProjectRoot "agent\server-agent.ps1"
 $ConfigPath = Join-Path $ProjectRoot "agent\config.json"
+$ConfigExamplePath = Join-Path $ProjectRoot "agent\config.example.json"
 
-if (-not (Test-Path $ServerScript) -or -not (Test-Path $AgentScript) -or -not (Test-Path $ConfigPath)) {
+if (-not (Test-Path $ServerScript) -or -not (Test-Path $AgentScript)) {
     Write-Host "ERRO: Execute este arquivo dentro da pasta completa do projeto (com 'server', 'agent' e 'public')." -ForegroundColor Red
     exit 1
+}
+
+if (-not (Test-Path $ConfigPath)) {
+    if (Test-Path $ConfigExamplePath) {
+        Copy-Item -Path $ConfigExamplePath -Destination $ConfigPath -Force
+        Write-Host "[OK] agent\config.json criado a partir de agent\config.example.json." -ForegroundColor Green
+    } else {
+        Write-Host "ERRO: Arquivo agent\config.json (ou config.example.json) não encontrado." -ForegroundColor Red
+        exit 1
+    }
+}
+
+function New-RandomHexToken {
+    param([int]$Bytes = 32)
+    $buf = New-Object byte[] $Bytes
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($buf) } finally { $rng.Dispose() }
+    return ([System.BitConverter]::ToString($buf) -replace '-', '').ToLowerInvariant()
 }
 
 Write-Host ""
@@ -51,9 +70,18 @@ try {
     Write-Host "[AVISO] A porta $PreferredPort já está em uso por outro programa. Usando a porta 3000." -ForegroundColor Yellow
 }
 
-# 3. Atualiza agent\config.json para enviar para a própria máquina (127.0.0.1)
+# 3. Atualiza agent\config.json (endpoint local e geração de chaves únicas se estiverem com valor padrão)
 $cfg = Get-Content -Path $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $cfg.endpointUrl = "http://127.0.0.1:$chosenPort/api/metrics"
+$placeholders = @("", "CHANGE_ME_ON_INSTALL", "server-monitor-local-key")
+if (-not $cfg.apiKey -or $placeholders -contains [string]$cfg.apiKey) {
+    $cfg.apiKey = New-RandomHexToken -Bytes 32
+    Write-Host "[OK] Nova chave apiKey gerada automaticamente em agent\config.json." -ForegroundColor Green
+}
+if ($cfg.backup -and (-not $cfg.backup.apiToken -or $placeholders -contains [string]$cfg.backup.apiToken)) {
+    $cfg.backup.apiToken = New-RandomHexToken -Bytes 32
+    Write-Host "[OK] Novo token de backup gerado automaticamente em agent\config.json." -ForegroundColor Green
+}
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($ConfigPath, ($cfg | ConvertTo-Json -Depth 5), $utf8NoBom)
 Write-Host "[OK] agent\config.json atualizado para: $($cfg.endpointUrl)" -ForegroundColor Green

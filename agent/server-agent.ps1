@@ -16,7 +16,11 @@ if (-not (Test-Path $ConfigPath)) {
 
 $config = Get-Content -Path $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $endpointUrl = if ($EndpointUrlOverride) { $EndpointUrlOverride } else { $config.endpointUrl }
-$apiKey = if ($config.apiKey) { $config.apiKey } else { "server-monitor-local-key" }
+$apiKey = if ($config.apiKey) { [string]$config.apiKey } else { "" }
+if (-not $DryRun -and ([string]::IsNullOrWhiteSpace($apiKey) -or $apiKey -eq "CHANGE_ME_ON_INSTALL")) {
+    Write-Error "Chave 'apiKey' não configurada em $ConfigPath. Execute scripts\instalar.ps1 ou defina uma chave segura."
+    exit 1
+}
 $intervalSeconds = if ($config.intervalSeconds -and $config.intervalSeconds -ge 2) { [int]$config.intervalSeconds } else { 5 }
 
 # Coletor nativo de CPU via kernel32.dll (GetSystemTimes) - independe de WMI e idioma do Windows

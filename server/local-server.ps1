@@ -1,7 +1,8 @@
 ﻿param(
     [int]$Port = 3000,
-    [string]$ApiKey = "server-monitor-local-key",
+    [string]$ApiKey = "",
     [string]$BackupToken = "",
+    [string]$CorsOrigin = "",
     [int]$OfflineThresholdSeconds = 20
 )
 
@@ -17,21 +18,24 @@ if (-not (Test-Path $PublicDir)) {
     exit 1
 }
 
-if (-not $BackupToken) {
-    $agentCfgPath = Join-Path $ProjectRoot "agent\config.json"
-    if (Test-Path $agentCfgPath) {
-        try {
-            $agentCfg = Get-Content -Path $agentCfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($agentCfg.backup -and $agentCfg.backup.apiToken) {
+$agentCfgPath = Join-Path $ProjectRoot "agent\config.json"
+if (Test-Path $agentCfgPath) {
+    try {
+        $agentCfg = Get-Content -Path $agentCfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (-not $ApiKey -and $agentCfg.apiKey -and $agentCfg.apiKey -ne "CHANGE_ME_ON_INSTALL") {
+            $ApiKey = [string]$agentCfg.apiKey
+        }
+        if (-not $BackupToken) {
+            if ($agentCfg.backup -and $agentCfg.backup.apiToken -and $agentCfg.backup.apiToken -ne "CHANGE_ME_ON_INSTALL") {
                 $BackupToken = [string]$agentCfg.backup.apiToken
-            } elseif ($agentCfg.apiKey) {
-                $BackupToken = [string]$agentCfg.apiKey
+            } elseif ($ApiKey) {
+                $BackupToken = $ApiKey
             }
-        } catch { }
-    }
-    if (-not $BackupToken) {
-        $BackupToken = $ApiKey
-    }
+        }
+    } catch { }
+}
+if (-not $BackupToken -and $ApiKey) {
+    $BackupToken = $ApiKey
 }
 
 $serverCode = @"
@@ -49,9 +53,11 @@ public class InfraWatchLocalServer
 {
     private readonly int _port;
     private readonly string _publicDir;
+    private readonly string _publicDirPrefix;
     private readonly string _apiKey;
     private readonly string _backupToken;
     private readonly string _backupDataFile;
+    private readonly string _corsOrigin;
     private readonly int _offlineThresholdSeconds;
     private readonly object _sync = new object();
     private readonly object _backupSync = new object();
@@ -68,13 +74,15 @@ public class InfraWatchLocalServer
     private readonly List<Dictionary<string, object>> _backupHistory = new List<Dictionary<string, object>>();
     private const int MaxBackupHistory = 200;
 
-    public InfraWatchLocalServer(int port, string publicDir, string apiKey, int offlineThresholdSeconds, string backupToken, string backupDataFile)
+    public InfraWatchLocalServer(int port, string publicDir, string apiKey, int offlineThresholdSeconds, string backupToken, string backupDataFile, string corsOrigin)
     {
         _port = port;
-        _publicDir = Path.GetFullPath(publicDir);
+        _publicDir = Path.GetFullPath(publicDir).TrimEnd(Path.DirectorySeparatorChar);
+        _publicDirPrefix = _publicDir + Path.DirectorySeparatorChar;
         _apiKey = apiKey ?? "";
         _backupToken = string.IsNullOrEmpty(backupToken) ? _apiKey : backupToken;
         _backupDataFile = backupDataFile ?? "";
+        _corsOrigin = corsOrigin ?? "";
         _offlineThresholdSeconds = offlineThresholdSeconds > 0 ? offlineThresholdSeconds : 20;
         _json.MaxJsonLength = 10 * 1024 * 1024;
         LoadBackupHistory();
@@ -194,7 +202,7 @@ public class InfraWatchLocalServer
         {
             string providedKey;
             req.Headers.TryGetValue("x-api-key", out providedKey);
-            if (!string.IsNullOrEmpty(_apiKey) && providedKey != _apiKey)
+            if (string.IsNullOrEmpty(_apiKey) || !FixedTimeEquals(providedKey ?? "", _apiKey))
             {
                 SendJson(stream, 401, "Unauthorized", "{\"ok\":false,\"error\":\"Chave de API inválida (x-api-key).\"}");
                 return;
@@ -263,7 +271,7 @@ public class InfraWatchLocalServer
         {
             string providedKey;
             req.Headers.TryGetValue("x-api-key", out providedKey);
-            if (!string.IsNullOrEmpty(_apiKey) && providedKey != _apiKey)
+            if (string.IsNullOrEmpty(_apiKey) || !FixedTimeEquals(providedKey ?? "", _apiKey))
             {
                 SendJson(stream, 401, "Unauthorized", "{\"ok\":false,\"error\":\"Não autorizado.\"}");
                 return;
@@ -388,7 +396,7 @@ public class InfraWatchLocalServer
 
     private bool ValidateBearerToken(HttpReq req)
     {
-        if (string.IsNullOrEmpty(_backupToken)) return true;
+        if (string.IsNullOrEmpty(_backupToken)) return false;
         string authHeader;
         if (!req.Headers.TryGetValue("authorization", out authHeader) || string.IsNullOrEmpty(authHeader))
         {
@@ -633,7 +641,7 @@ public class InfraWatchLocalServer
         var relative = urlPath == "/" ? "index.html" : urlPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
         var fullPath = Path.GetFullPath(Path.Combine(_publicDir, relative));
 
-        if (!fullPath.StartsWith(_publicDir, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+        if (!fullPath.StartsWith(_publicDirPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
         {
             SendJson(stream, 404, "Not Found", "{\"ok\":false,\"error\":\"Arquivo não encontrado.\"}");
             return;
@@ -659,13 +667,13 @@ public class InfraWatchLocalServer
         }
     }
 
-    private static void SendJson(NetworkStream stream, int code, string reason, string json)
+    private void SendJson(NetworkStream stream, int code, string reason, string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
         SendResponse(stream, code, reason, "application/json; charset=utf-8", bytes, true);
     }
 
-    private static void SendResponse(NetworkStream stream, int code, string reason, string contentType, byte[] body, bool isApi, int? contentLengthOverride = null)
+    private void SendResponse(NetworkStream stream, int code, string reason, string contentType, byte[] body, bool isApi, int? contentLengthOverride = null)
     {
         var len = contentLengthOverride.HasValue ? contentLengthOverride.Value : body.Length;
         var sb = new StringBuilder();
@@ -674,9 +682,12 @@ public class InfraWatchLocalServer
         sb.AppendFormat("Content-Length: {0}\r\n", len);
         sb.Append("Connection: close\r\n");
         sb.Append("Cache-Control: no-store, max-age=0\r\n");
-        if (isApi)
+        sb.Append("X-Content-Type-Options: nosniff\r\n");
+        sb.Append("X-Frame-Options: DENY\r\n");
+        sb.Append("Referrer-Policy: no-referrer\r\n");
+        if (isApi && !string.IsNullOrEmpty(_corsOrigin))
         {
-            sb.Append("Access-Control-Allow-Origin: *\r\n");
+            sb.AppendFormat("Access-Control-Allow-Origin: {0}\r\n", _corsOrigin);
             sb.Append("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n");
             sb.Append("Access-Control-Allow-Headers: Content-Type, x-api-key, Authorization\r\n");
         }
@@ -803,10 +814,12 @@ try {
         Select-Object -ExpandProperty IPAddress
 } catch { }
 
-$server = New-Object InfraWatchLocalServer($Port, $PublicDir, $ApiKey, $OfflineThresholdSeconds, $BackupToken, $BackupDataFile)
+$server = New-Object InfraWatchLocalServer($Port, $PublicDir, $ApiKey, $OfflineThresholdSeconds, $BackupToken, $BackupDataFile, $CorsOrigin)
 $server.Start()
 
 $primaryIp = if ($localIps.Count -gt 0) { $localIps[0] } else { "127.0.0.1" }
+$apiKeyStatus = if ($ApiKey) { "Configurada (oculta)" } else { "NAO CONFIGURADA (escrita bloqueada)" }
+$backupTokenStatus = if ($BackupToken) { "Configurado (oculto)" } else { "NAO CONFIGURADO (escrita bloqueada)" }
 
 Write-Host ""
 Write-Host "==============================================================" -ForegroundColor Cyan
@@ -818,8 +831,8 @@ foreach ($ip in $localIps) {
 }
 Write-Host "  Endpoint agente : http://${primaryIp}:$Port/api/metrics" -ForegroundColor Yellow
 Write-Host "  Endpoint backup : http://${primaryIp}:$Port/api/backup (Bearer)" -ForegroundColor Yellow
-Write-Host "  Chave API       : $ApiKey" -ForegroundColor DarkGray
-Write-Host "  Token Backup    : $BackupToken" -ForegroundColor DarkGray
+Write-Host "  Chave API       : $apiKeyStatus" -ForegroundColor DarkGray
+Write-Host "  Token Backup    : $backupTokenStatus" -ForegroundColor DarkGray
 Write-Host "  Arquivo Backup  : $BackupDataFile" -ForegroundColor DarkGray
 Write-Host "  Limite Offline  : $OfflineThresholdSeconds segundos sem sinal" -ForegroundColor DarkGray
 Write-Host "--------------------------------------------------------------" -ForegroundColor Cyan

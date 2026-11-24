@@ -2,7 +2,7 @@
   "serverId": "servidor-local",
   "serverLabel": "Servidor Local",
   "endpointUrl": "http://127.0.0.1:80/api/metrics",
-  "apiKey": "server-monitor-local-key",
+  "apiKey": "CHANGE_ME_ON_INSTALL",
   "intervalSeconds": 5,
   "gatewayToPing": "192.168.1.1",
   "watchedServices": [
@@ -21,7 +21,7 @@
   ],
   "backup": {
     "label": "FreeFileSync → OneDrive",
-    "apiToken": "server-monitor-local-key",
+    "apiToken": "CHANGE_ME_ON_INSTALL",
     "warnAfterHours": 24,
     "criticalAfterHours": 48,
     "logPaths": [],

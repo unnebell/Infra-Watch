@@ -3,5 +3,6 @@
 .vercel
 node_modules/
 *.log
+agent/config.json
 data/
 plano-server-monitor.md
